@@ -608,6 +608,7 @@
     <div class="nav-footer">
       <button onclick="goPage(3)">← Anterior</button>
       <button class="btn-primary" onclick="salvarFicha()">💾 Salvar Segredo</button>
+      <button onclick="exportarFicha()" style="font-size:12px;padding:6px 12px">📄 Exportar</button>
     </div>
   </div>
 </div>
@@ -1030,6 +1031,113 @@ function renderTableRows(tbodyId, rows, keys, placeholders) {
     tbody.appendChild(tr);
   });
 }
+
+
+// ── EXPORTAR FICHA ──
+function exportarFicha() {
+  const data = readFichaFromForm();
+  const linhas = [];
+  linhas.push('═'.repeat(50));
+  linhas.push('  ' + data.nome.toUpperCase());
+  linhas.push('═'.repeat(50));
+  linhas.push('');
+  linhas.push('LVL: '+(data.lvl||0)+'    Caminho: '+(data.caminho||'—')+'    Raça: '+(data.raca||'—'));
+  linhas.push('');
+  linhas.push('── ATRIBUTOS ──────────────────────────────────');
+  linhas.push('Força:       '+(data.forca||0));
+  linhas.push('Resistência: '+(data.resist||0));
+  linhas.push('Agilidade:   '+(data.agilidade||0));
+  linhas.push('Velocidade:  '+(data.velocidade||0));
+  linhas.push('QI:          '+(data.qi||0));
+  linhas.push('Stamina:     '+(data.stamina||0));
+  linhas.push('Combate:     '+(data.combate||0));
+  if (data.dano_critico) linhas.push('Dano Crítico: '+data.dano_critico);
+  linhas.push('');
+  linhas.push('── VIDA E ENERGIA ──────────────────────────────');
+  if (data.vida_txt1) linhas.push(data.vida_txt1);
+  if (data.vida_txt2) linhas.push(data.vida_txt2);
+  linhas.push('Vida: '+(data.vida_num||0)+'    CA: '+(data.ca||'—')+'    Sanidade: '+(data.sanidade||'—'));
+  if (data.modificador) linhas.push('Modificador: '+data.modificador);
+  linhas.push('');
+  linhas.push('── CLASSES ─────────────────────────────────────');
+  if (data.classe)  linhas.push('Classe: '+data.classe);
+  if (data.classe2) linhas.push('Classe 2: '+data.classe2);
+  if (data.pericia) linhas.push('Perícia: '+data.pericia);
+  linhas.push('');
+  if ((data.extraFields||[]).length) {
+    linhas.push('── CAMPOS EXTRAS ───────────────────────────────');
+    data.extraFields.forEach(function(f){if(f[0]||f[1])linhas.push((f[0]||'')+': '+(f[1]||''));});
+    linhas.push('');
+  }
+  if ((data.especiais||[]).length) {
+    linhas.push('── PERÍCIAS ESPECIAIS ──────────────────────────');
+    data.especiais.forEach(function(p){if(p)linhas.push('• '+p);});
+    linhas.push('');
+  }
+  if ((data.supremas||[]).length) {
+    linhas.push('── PERÍCIAS SUPREMAS ───────────────────────────');
+    data.supremas.forEach(function(p){if(p)linhas.push('• '+p);});
+    linhas.push('');
+  }
+  if ((data.itens||[]).length) {
+    linhas.push('── ITENS ───────────────────────────────────────');
+    data.itens.forEach(function(i){
+      if(i.nome)linhas.push('• '+i.nome+(i.qtd?' (x'+i.qtd+')':'')+(i.desc?' — '+i.desc:''));
+    });
+    linhas.push('');
+  }
+  if ((data.habilidades||[]).length) {
+    linhas.push('── HABILIDADES ─────────────────────────────────');
+    data.habilidades.forEach(function(h){
+      if(h.nome){
+        linhas.push('');
+        linhas.push('['+( h.tipo||'—')+'] '+h.nome);
+        if(h.efeito)linhas.push('  '+h.efeito);
+      }
+    });
+    linhas.push('');
+  }
+  linhas.push('═'.repeat(50));
+  var txt = linhas.join('\n');
+
+  var modal = document.getElementById('exportModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'exportModal';
+    modal.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:5000;align-items:center;justify-content:center;padding:1rem;flex-direction:column';
+    modal.innerHTML = '<div style="background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);padding:20px;width:100%;max-width:600px;max-height:85vh;display:flex;flex-direction:column;gap:12px">'
+      +'<div style="font-family:'Cinzel',serif;font-size:14px;color:var(--gold);letter-spacing:.5px">📄 Exportar Ficha</div>'
+      +'<textarea id="exportTxt" style="flex:1;min-height:300px;font-family:monospace;font-size:12px;resize:vertical;line-height:1.5;background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:10px" readonly></textarea>'
+      +'<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">'
+      +'<button onclick="copiarExporte()" style="background:var(--bg3);border:1px solid var(--border2);color:var(--gold);font-family:'Cinzel',serif;font-size:12px;padding:7px 16px;border-radius:var(--radius);cursor:pointer">📋 Copiar</button>'
+      +'<button onclick="baixarExporte()" style="background:var(--bg3);border:1px solid var(--border2);color:var(--gold);font-family:'Cinzel',serif;font-size:12px;padding:7px 16px;border-radius:var(--radius);cursor:pointer">⬇ Baixar .txt</button>'
+      +'<button onclick="document.getElementById('exportModal').style.display='none'" style="background:transparent;border:1px solid var(--border);color:var(--text3);font-family:'Cinzel',serif;font-size:12px;padding:7px 16px;border-radius:var(--radius);cursor:pointer">Fechar</button>'
+      +'</div></div>';
+    document.body.appendChild(modal);
+  }
+  document.getElementById('exportTxt').value = txt;
+  modal.style.display = 'flex';
+  modal._nomeAtual = data.nome;
+}
+window.exportarFicha = exportarFicha;
+
+window.copiarExporte = function() {
+  var area = document.getElementById('exportTxt');
+  area.select();
+  document.execCommand('copy');
+  showToast('Copiado!');
+};
+
+window.baixarExporte = function() {
+  var txt = document.getElementById('exportTxt').value;
+  var modal = document.getElementById('exportModal');
+  var nome = (modal._nomeAtual || 'ficha').replace(/[^a-z0-9]/gi,'_').toLowerCase();
+  var blob = new Blob([txt], {type:'text/plain;charset=utf-8'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = nome + '.txt';
+  a.click();
+};
 
 function showToast(msg) {
   const t = document.getElementById('toast');
